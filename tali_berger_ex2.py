@@ -1,8 +1,10 @@
- %load_ext tensorboard
+"""קישור לאתר Github
+https://github.com/TaliBerger
+"""
+%load_ext tensorboard
 import datetime, os
 import tensorflow as tf
 import tensorflow_datasets as tfds
-
 
 # טעינת הנתונים
 (ds_train, ds_test), ds_info = tfds.load(
@@ -10,8 +12,18 @@ import tensorflow_datasets as tfds
     split=['train', 'test'],
     shuffle_files=True,
     as_supervised=True,
-    with_info=True,
+    with_info=True
 )
+
+num_of_classes = ds_info.features['label'].num_classes
+image_shape = ds_info.features['image'].shape
+train_size = ds_info.splits['train'].num_examples
+test_size = ds_info.splits['test'].num_examples
+
+print(num_of_classes)
+print(image_shape)
+print(train_size)
+print(test_size)
 
 #פונקציית נירמול
 def normalize_img(image, label):
@@ -20,46 +32,45 @@ def normalize_img(image, label):
 
 # נירמול הנתונים
 ds_train = ds_train.map(normalize_img, num_parallel_calls=tf.data.AUTOTUNE)
-ds_train = ds_train.batch(32).prefetch(tf.data.AUTOTUNE)
+ds_train = ds_train.cache()
+ds_train = ds_train.shuffle(ds_info.splits['train'].num_examples)
+ds_train = ds_train.batch(32)
+ds_train = ds_train.prefetch(tf.data.AUTOTUNE)
 
-ds_test = ds_test.map(normalize_img, num_parallel_calls=tf.data.AUTOTUNE)
-ds_test = ds_test.batch(32).prefetch(tf.data.AUTOTUNE)
+ds_test=ds_test.map(normalize_img,num_parallel_calls=tf.data.AUTOTUNE)
+ds_test=ds_test.batch(128)
+ds_test=ds_test.cache()
+ds_test=ds_test.prefetch(tf.data.AUTOTUNE)
 
-#ניסוי 1
+
+#ניסוי 11
 #בניית המודל
-model_1= tf.keras.Sequential([
-    tf.keras.layers.Flatten(input_shape=(28,28)),
-    tf.keras.layers.Dense(93, activation='relu'), # שכבה ראשונה
+layers = [
+  #  tf.keras.Sequential([
+   tf.keras.layers.Flatten(input_shape=(28,28)),
+    tf.keras.layers.Dense(93, activation='relu'),# שכבה ראשונה
+      tf.keras.layers.Dropout(0.3),# שכבת Dropout
     tf.keras.layers.Dense(16, activation='relu'), # שכבה שנייה
     tf.keras.layers.Dense(92, activation= 'relu'), # שכבה שלישית
     tf.keras.layers.Dense(14, activation= 'relu'), # שכבה רביעית
     tf.keras.layers.Dense(10, activation='softmax'), # הגדרה של 10 קטגוריות
-])
+]
 
 # קימפול המודל
-model_1.compile(
-    loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-    metrics=[tf.keras.metrics.SparseCategoricalAccuracy()],
-)
+model = tf.keras.models.Sequential(layers)
+model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+metrics=[tf.keras.metrics.SparseCategoricalAccuracy()],)
+model.summary()
+
 
 # אימון המודל
-model_1.fit(ds_train, epochs=5)
+model.fit(ds_train, epochs=10,validation_data=ds_test)
 
 # בדיקת המודל
-model_1.evaluate(ds_test)
+model.evaluate(ds_test)
 
-#תוצאות פלט ניסוי מספר 1
 """
-Epoch 1/5
-1875/1875 ━━━━━━━━━━━━━━━━━━━━ 17s 8ms/step - loss: 0.6841 - sparse_categorical_accuracy: 0.7875
-Epoch 2/5
-1875/1875 ━━━━━━━━━━━━━━━━━━━━ 8s 4ms/step - loss: 0.1537 - sparse_categorical_accuracy: 0.9555
-Epoch 3/5
-1875/1875 ━━━━━━━━━━━━━━━━━━━━ 7s 4ms/step - loss: 0.1066 - sparse_categorical_accuracy: 0.9689
-Epoch 4/5
-1875/1875 ━━━━━━━━━━━━━━━━━━━━ 9s 5ms/step - loss: 0.0847 - sparse_categorical_accuracy: 0.9769
-Epoch 5/5
-1875/1875 ━━━━━━━━━━━━━━━━━━━━ 8s 4ms/step - loss: 0.0729 - sparse_categorical_accuracy: 0.9801
-313/313 ━━━━━━━━━━━━━━━━━━━━ 1s 4ms/step - loss: 0.1191 - sparse_categorical_accuracy: 0.9687
-[0.11359720677137375, 0.9692000150680542]
+תוצאה הכי טובה,Epoch=9
+
+1875/1875 ━━━━━━━━━━━━━━━━━━━━ 6s 3ms/step - loss: 0.1294 - sparse_categorical_accuracy: 0.9636 - val_loss: 0.1034 - val_sparse_categorical_accuracy: 0.9739
 """
