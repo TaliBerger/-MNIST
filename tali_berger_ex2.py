@@ -1,6 +1,3 @@
-"""קישור לאתר Github
-https://github.com/TaliBerger
-"""
 %load_ext tensorboard
 import datetime, os
 import tensorflow as tf
